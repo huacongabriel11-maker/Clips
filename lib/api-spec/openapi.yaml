@@ -1,0 +1,174 @@
+openapi: 3.1.0
+info:
+  title: Api
+  version: 0.1.0
+  description: AI Clip Maker API
+servers:
+  - url: /api
+tags:
+  - name: health
+  - name: clips
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /clips/analyze:
+    post:
+      operationId: analyzeVideo
+      tags: [clips]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VideoInput"
+      responses:
+        "202":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobCreated"
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /clips/jobs/{jobId}:
+    get:
+      operationId: getJobStatus
+      tags: [clips]
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /clips/jobs:
+    get:
+      operationId: listJobs
+      tags: [clips]
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Job"
+
+  /clips/download/{jobId}/{clipIndex}:
+    get:
+      operationId: downloadClip
+      tags: [clips]
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: clipIndex
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          content:
+            video/mp4:
+              schema:
+                type: string
+                format: binary
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+
+    VideoInput:
+      type: object
+      required: [url]
+      properties:
+        url:
+          type: string
+
+    JobCreated:
+      type: object
+      required: [jobId]
+      properties:
+        jobId:
+          type: string
+
+    ClipMoment:
+      type: object
+      required: [index, startTime, endTime, startSeconds, endSeconds, score, reason, title]
+      properties:
+        index:        { type: integer }
+        startTime:    { type: string }
+        endTime:      { type: string }
+        startSeconds: { type: number }
+        endSeconds:   { type: number }
+        score:        { type: number }
+        reason:       { type: string }
+        title:        { type: string }
+        downloadUrl:  { type: ["string", "null"] }
+        ready:        { type: boolean }
+
+    Job:
+      type: object
+      required: [id, status, url, createdAt, progress, step]
+      properties:
+        id:             { type: string }
+        status:
+          type: string
+          enum: [pending, processing, done, error]
+        url:            { type: string }
+        videoTitle:     { type: ["string", "null"] }
+        videoThumbnail: { type: ["string", "null"] }
+        videoDuration:  { type: ["number", "null"] }
+        createdAt:      { type: string }
+        completedAt:    { type: ["string", "null"] }
+        progress:       { type: number }
+        step:           { type: string }
+        clips:
+          type: array
+          items:
+            $ref: "#/components/schemas/ClipMoment"
+        error:          { type: ["string", "null"] }
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
